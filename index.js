@@ -37,9 +37,6 @@ class MediaChunkPlayer {
         }
         // else create an default audio element
         this.media = new Audio();
-        this.media.addEventListener("canplay", event => {
-            this.media.play();
-        });
         this.media.addEventListener("canplaythrough", event => {
             this.media.play();
         });
@@ -50,6 +47,9 @@ class MediaChunkPlayer {
         this.media.src = src;
         if (this.onLoad && !this.listenEnded) {
             this.listenEnded = true;
+            this.media.addEventListener("canplay", event => {
+                this.media.play();
+            });
             this.media.addEventListener('ended', () => {
                 this.onLoad();
             });
@@ -127,13 +127,7 @@ class MediaChunkPlayer {
         axios.request(form).then((response) => {
             let logId = response.headers['x-log-id'];
             if (this.fallbackStream && logId) {
-                this.media.src = form.url + '/' + logId;
-                if (this.onLoad && !this.listenEnded) {
-                    this.listenEnded = true;
-                    this.media.addEventListener('ended', () => {
-                        this.onLoad();
-                    });
-                }
+                this.setSrc(form.url + '/' + logId);
             } else {
                 this.media.src = URL.createObjectURL(response.data);
                 if (this.onLoad) {
