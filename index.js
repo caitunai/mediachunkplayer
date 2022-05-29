@@ -18,6 +18,7 @@ class MediaChunkPlayer {
         this.isSupportDownload = false;
         this.fetchTotal = 0;
         this.total = 0;
+        this.fallbackStream = false;
         this.setMedia(null);
     }
     setMethod(method) {
@@ -36,14 +37,32 @@ class MediaChunkPlayer {
         }
         // else create an default audio element
         this.media = new Audio();
+        this.media.addEventListener("canplay", event => {
+            this.media.play();
+        });
         this.media.addEventListener("canplaythrough", event => {
-          this.media.play();
+            this.media.play();
         });
         this.media.type = this.mime;
         this.media.autoplay = true;
     }
+    setSrc(src) {
+        this.media.src = src;
+        if (this.onLoad && !this.listenEnded) {
+            this.listenEnded = true;
+            this.media.addEventListener('ended', () => {
+                this.onLoad();
+            });
+        }
+    }
     toggleEnableDownload() {
         this.isSupportDownload = !this.isSupportDownload;
+    }
+    disableDownload() {
+        this.isSupportDownload = false;
+    }
+    enableStreamFallback() {
+        this.fallbackStream = true;
     }
     play(body, headers) {
         this.headers = headers || {};
@@ -96,6 +115,9 @@ class MediaChunkPlayer {
             headers: this.headers,
             responseType: 'blob'
         };
+        if (this.fallbackStream) {
+            form.headers['X-Requested-Media'] = 'MediaSource';
+        }
         if (this.onProgress) {
             form.onDownloadProgress = this.onProgress;
         }
@@ -103,9 +125,20 @@ class MediaChunkPlayer {
             form.data = this.body;
         }
         axios.request(form).then((response) => {
-            this.media.src = URL.createObjectURL(response.data);
-            if (this.onLoad) {
-                this.onLoad();
+            let logId = response.headers['x-log-id'];
+            if (this.fallbackStream && logId) {
+                this.media.src = form.url + '/' + logId;
+                if (this.onLoad && !this.listenEnded) {
+                    this.listenEnded = true;
+                    this.media.addEventListener('ended', () => {
+                        this.onLoad();
+                    });
+                }
+            } else {
+                this.media.src = URL.createObjectURL(response.data);
+                if (this.onLoad) {
+                    this.onLoad();
+                }
             }
         }).catch((err) => {
             if (this.onError) {
