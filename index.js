@@ -40,6 +40,7 @@ class MediaChunkPlayer {
           this.media.play();
         });
         this.media.type = this.mime;
+        this.media.autoplay = true;
     }
     toggleEnableDownload() {
         this.isSupportDownload = !this.isSupportDownload;
@@ -50,8 +51,12 @@ class MediaChunkPlayer {
             this.body = body;
             this.loadFile();
         } else {
-            this.media.currentTime = 0;
-            this.media.pause();
+            if (this.media.currentTime > 0 && !this.media.paused) {
+                this.media.currentTime = 0;
+            }
+            if (!this.media.paused) {
+                this.media.pause();
+            }
             this.media.play();
         }
     }
