@@ -11,9 +11,13 @@ class MediaChunkPlayer {
         this.downloaded = false;
         this.reader = null;
         this.onError = null;
+        this.onLoad = null;
+        this.onProgress = null;
         this.buffers = [];
         this.bufferBlobUrl = '';
         this.isSupportDownload = false;
+        this.fetchTotal = 0;
+        this.total = 0;
         this.setMedia(null);
     }
     setMethod(method) {
@@ -52,6 +56,8 @@ class MediaChunkPlayer {
         }
     }
     loadFile() {
+        this.fetchTotal = 0;
+        this.total = 0;
         this.downloaded = false;
         this.buffers = [];
         if (this.bufferBlobUrl) {
@@ -60,18 +66,23 @@ class MediaChunkPlayer {
         } else if (this.media.src) {
             URL.revokeObjectURL(this.media.src);
         }
-        if (!window.MediaSource) {
-            this.loadFileByAxios();
+        if (this.isSupportMediaSourceStream()) {
+            this.loadFileFetch();
             return;
         }
-        if (!window.fetch) {
-            this.loadFileByAxios();
-            return;
-        }
-        this.loadFileFetch();
+        this.loadFileByAxios();
+    }
+    isSupportMediaSourceStream() {
+        return window.MediaSource && window.fetch;
     }
     setErrorCallback(cb) {
         this.onError = cb
+    }
+    setLoadCallback(cb) {
+        this.onLoad = cb
+    }
+    setProgressCallback(cb) {
+        this.onProgress = cb
     }
     loadFileByAxios() {
         let form = {
@@ -80,14 +91,20 @@ class MediaChunkPlayer {
             headers: this.headers,
             responseType: 'blob'
         };
+        if (this.onProgress) {
+            form.onDownloadProgress = this.onProgress;
+        }
         if (form.method == 'POST' || form.method == 'PUT') {
             form.data = this.body;
         }
         axios.request(form).then((response) => {
             this.media.src = URL.createObjectURL(response.data);
+            if (this.onLoad) {
+                this.onLoad();
+            }
         }).catch((err) => {
             if (this.onError) {
-                this.onError(err)
+                this.onError(err);
             }
             return err;
         })
@@ -107,10 +124,24 @@ class MediaChunkPlayer {
             if (done) {
                 this.downloaded = true;
                 this.mediaSource.endOfStream();
+                if (this.onLoad) {
+                    this.onLoad();
+                }
                 return;
             }
             if (this.isSupportDownload) {
                 this.buffers.push(value.buffer);
+            }
+            if (this.onProgress) {
+                this.fetchTotal = this.fetchTotal + value.length
+                if (!this.total) {
+                    this.total = this.fetchTotal;
+                }
+                this.onProgress({
+                    lengthComputable: false,
+                    loaded: this.fetchTotal,
+                    total: this.total
+                });
             }
             this.sourceBuffer.appendBuffer(value.buffer);
         });
@@ -124,6 +155,7 @@ class MediaChunkPlayer {
             form.body = this.body;
         }
         return fetch(this.url, form).then((response) => {
+            this.total = response.headers.get('Content-Length');
             this.reader = response.body.getReader();
             this.read();
             return response;
