@@ -134,14 +134,11 @@ class MediaChunkPlayer {
             }
             if (this.onProgress) {
                 this.fetchTotal = this.fetchTotal + value.length
-                if (!this.total) {
-                    this.total = this.fetchTotal;
-                }
-                this.onProgress({
+                this.onProgress(new ProgressEvent('progress', {
                     lengthComputable: false,
                     loaded: this.fetchTotal,
                     total: this.total
-                });
+                }));
             }
             this.sourceBuffer.appendBuffer(value.buffer);
         });
