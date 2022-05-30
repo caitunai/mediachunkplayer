@@ -70,7 +70,7 @@ class MediaChunkPlayer {
         if (this.body != body) {
             this.body = body;
             this.loadFile();
-        } else {
+        } else if (this.media.src) {
             if (this.fallbackStream && !window.MediaSource && this.media.src && (this.media.src.indexOf('http://') >= 0 || this.media.src.indexOf('https://') >= 0)) {
                 // fix iOS Safari
                 if (this.downloadBlobUrl) {
