@@ -19,6 +19,7 @@ class MediaChunkPlayer {
         this.fetchTotal = 0;
         this.total = 0;
         this.fallbackStream = false;
+        this.downloadBlobUrl = '';
         this.setMedia(null);
     }
     setMethod(method) {
@@ -70,6 +71,16 @@ class MediaChunkPlayer {
             this.body = body;
             this.loadFile();
         } else {
+            if (this.fallbackStream && !window.MediaSource && this.media.src && (this.media.src.indexOf('http://') >= 0 || this.media.src.indexOf('https://') >= 0)) {
+                // fix iOS Safari
+                if (this.downloadBlobUrl) {
+                    this.setSrc(this.downloadBlobUrl)
+                } else {
+                    this.setSrc(this.media.src);
+                }
+                this.media.play();
+                return;
+            }
             if (this.media.currentTime > 0 && !this.media.paused) {
                 this.media.currentTime = 0;
             }
@@ -77,11 +88,13 @@ class MediaChunkPlayer {
                 this.media.pause();
             }
             this.media.play();
+            this.media.currentTime = 0;
         }
     }
     loadFile() {
         this.fetchTotal = 0;
         this.total = 0;
+        this.downloadBlobUrl = '';
         this.downloaded = false;
         this.buffers = [];
         if (this.bufferBlobUrl) {
@@ -127,12 +140,39 @@ class MediaChunkPlayer {
         axios.request(form).then((response) => {
             let logId = response.headers['x-log-id'];
             if (this.fallbackStream && logId) {
+                if (this.isSupportDownload) {
+                    this.downloadFileByAxios();
+                }
                 this.setSrc(form.url + '/' + logId);
             } else {
                 this.media.src = URL.createObjectURL(response.data);
                 if (this.onLoad) {
                     this.onLoad();
                 }
+            }
+        }).catch((err) => {
+            if (this.onError) {
+                this.onError(err);
+            }
+            return err;
+        })
+    }
+    downloadFileByAxios() {
+        let form = {
+            url: this.url,
+            method: this.method.toUpperCase(),
+            headers: this.headers,
+            responseType: 'blob'
+        };
+        delete form.headers["X-Requested-Media"];
+        if (form.method == 'POST' || form.method == 'PUT') {
+            form.data = this.body;
+        }
+        axios.request(form).then((response) => {
+            let currentTime = this.media.currentTime;
+            this.downloadBlobUrl = URL.createObjectURL(response.data);
+            if (this.onLoad) {
+                this.onLoad();
             }
         }).catch((err) => {
             if (this.onError) {
@@ -211,7 +251,9 @@ class MediaChunkPlayer {
             return;
         }
         let blobUrl = this.media.src;
-        if (this.bufferBlobUrl) {
+        if (this.downloadBlobUrl) {
+            blobUrl = this.downloadBlobUrl;
+        } else if (this.bufferBlobUrl) {
             blobUrl = this.bufferBlobUrl;
         } else if (this.buffers.length > 0) {
             let bufferBlob = new Blob(this.buffers, { type: this.mime });
