@@ -224,6 +224,11 @@ class MediaChunkPlayer {
             form.body = this.body;
         }
         return fetch(this.url, form).then((response) => {
+            if (response.status !== 200) {
+                let err = new Error(response.statusText);
+                err.response = response;
+                throw err;
+            }
             this.total = response.headers.get('Content-Length');
             this.reader = response.body.getReader();
             this.read();
