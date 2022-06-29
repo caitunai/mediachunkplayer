@@ -20,6 +20,7 @@ class MediaChunkPlayer {
         this.total = 0;
         this.fallbackStream = false;
         this.downloadBlobUrl = '';
+        this.blob = null;
         this.setMedia(null);
     }
     setMethod(method) {
@@ -173,6 +174,7 @@ class MediaChunkPlayer {
         }
         axios.request(form).then((response) => {
             let currentTime = this.media.currentTime;
+            this.blob = response.data;
             this.downloadBlobUrl = URL.createObjectURL(response.data);
             if (this.onLoad) {
                 this.onLoad();
@@ -254,19 +256,30 @@ class MediaChunkPlayer {
             }
         });
     }
-    download(filename) {
+    getBlobUrl() {
         if (!this.isSupportDownload) {
-            return;
+            return '';
         }
-        let blobUrl = this.media.src;
+        let blobUrl = '';
         if (this.downloadBlobUrl) {
             blobUrl = this.downloadBlobUrl;
         } else if (this.bufferBlobUrl) {
             blobUrl = this.bufferBlobUrl;
         } else if (this.buffers.length > 0) {
-            let bufferBlob = new Blob(this.buffers, { type: this.mime });
-            blobUrl = URL.createObjectURL(bufferBlob);
+            this.blob = new Blob(this.buffers, { type: this.mime });
+            blobUrl = URL.createObjectURL(this.blob);
             this.bufferBlobUrl = blobUrl;
+        }
+        return blobUrl;
+    }
+    download(filename) {
+        if (!this.isSupportDownload) {
+            return;
+        }
+        let blobUrl = this.media.src;
+        const realBlobUrl = this.getBlobUrl();
+        if (realBlobUrl) {
+            blobUrl = realBlobUrl;
         }
         if (typeof window.navigator.msSaveOrOpenBlob !== 'undefined') {
             // IE doesn't allow using a blob object directly as link href.
