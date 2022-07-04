@@ -156,6 +156,7 @@ class MediaChunkPlayer {
             }
         }).catch((err) => {
             if (this.onError) {
+                this.body = '';
                 this.onError(err);
             }
             return err;
@@ -181,6 +182,7 @@ class MediaChunkPlayer {
             }
         }).catch((err) => {
             if (this.onError) {
+                this.body = '';
                 this.onError(err);
             }
             return err;
@@ -240,6 +242,7 @@ class MediaChunkPlayer {
             return response;
         }).catch((err) => {
             if (this.onError) {
+                this.body = 1;
                 this.onError(err);
             }
             return err;

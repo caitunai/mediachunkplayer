@@ -1,6 +1,6 @@
 {
   "name": "@caitun/mediachunkplayer",
-  "version": "1.1.9",
+  "version": "1.2.0",
   "description": "play media from chunk response",
   "main": "index.js",
   "scripts": {
