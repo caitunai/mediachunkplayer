@@ -242,7 +242,7 @@ class MediaChunkPlayer {
             return response;
         }).catch((err) => {
             if (this.onError) {
-                this.body = 1;
+                this.body = '';
                 this.onError(err);
             }
             return err;
